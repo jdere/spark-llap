@@ -8,7 +8,7 @@ import filecmp
 import tempfile
 
 testdb = "spark_ranger_test"
-hiveJdbcUrl = 'jdbc:hive2://ctr-e126-1485243696039-11019-01-000004.hwx.site:10500/default;principal=hive/_HOST@EXAMPLE.COM'
+hiveJdbcUrl = 'jdbc:hive2://hdp26-5.openstacklocal:10500/default;principal=hive/_HOST@EXAMPLE.COM'
 generateGoldenFiles = False
 answerPath = "../resources/answer"
 dirPath = tempfile.mkdtemp()
@@ -50,6 +50,10 @@ class SparkRangerTestSuite(unittest.TestCase):
 
     def err_file(self, test_id):
         return "{0}/{1}.err".format(dirPath, test_id)
+
+    def executeHive(self, query):
+        cmd = 'beeline --silent=true -u "{0}" -e \'{1}\''
+        os.system(cmd.format(hiveJdbcUrl, query))
 
     def execute(self, query, test_id, user='spark', check=True, verbose=False):
         if verbose or generateGoldenFiles:
@@ -107,7 +111,7 @@ class SparkRangerTestSuite(unittest.TestCase):
 
 
 class DbTestSuite(SparkRangerTestSuite):
-    sparkJdbcUrl = 'jdbc:hive2://ctr-e126-1485243696039-11019-01-000004.hwx.site:10016/;principal=hive/_HOST@EXAMPLE.COM;hive.server2.proxy.user='
+    sparkJdbcUrl = 'jdbc:hive2://hdp26-2.openstacklocal:10016/;principal=hive/_HOST@EXAMPLE.COM;hive.server2.proxy.user='
 
     def setUp(self):
         sqls = map(lambda db: 'DROP DATABASE IF EXISTS ' + db + ' CASCADE', dbs + [testdb])
@@ -126,21 +130,21 @@ class DbTestSuite(SparkRangerTestSuite):
 
     def test_20_drop_db(self):
         for db in dbs:
-            self.execute('CREATE DATABASE ' + db, 'drop_db_1_' + db, 'hive')
+            self.executeHive('CREATE DATABASE ' + db)
             self.execute('DROP DATABASE ' + db, 'drop_db_2_' + db)
             self.execute("SHOW DATABASES LIKE '" + db + "'", 'drop_db_3_' + db, 'hive')
 
     def test_21_drop_db_cascade(self):
         for db in dbs:
-            self.execute('CREATE DATABASE ' + db, 'drop_db_cascade_1_' + db, 'hive')
-            self.execute('CREATE TABLE ' + db + '.t (a INT)', 'drop_db_cascade_2_' + db, 'hive')
+            self.executeHive('CREATE DATABASE ' + db)
+            self.executeHive('CREATE TABLE ' + db + '.t (a INT)')
             self.execute('DROP DATABASE ' + db + ' CASCADE', 'drop_db_cascade_3_' + db)
             self.execute("SHOW DATABASES LIKE '" + db + "'", 'drop_db_cascade_4_' + db, 'hive')
             self.execute('DROP DATABASE ' + db + ' CASCADE', 'drop_db_cascade_5_' + db, 'hive')
 
 
 class TableTestSuite(SparkRangerTestSuite):
-    sparkJdbcUrl = 'jdbc:hive2://ctr-e126-1485243696039-11019-01-000004.hwx.site:10016/' + testdb + ';principal=hive/_HOST@EXAMPLE.COM;hive.server2.proxy.user='
+    sparkJdbcUrl = 'jdbc:hive2://hdp26-2.openstacklocal:10016/' + testdb + ';principal=hive/_HOST@EXAMPLE.COM;hive.server2.proxy.user='
 
     def setUp(self):
         sqls = [
@@ -217,33 +221,33 @@ class TableTestSuite(SparkRangerTestSuite):
 
     def test_43_alter_add_partition(self):
         for t in tables:
-            self.execute('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)', 'alter_add_partition_1_' + t, 'hive')
+            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_add_partition_2_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_add_partition_3_' + t, 'hive')
 
     def test_44_alter_rename_partition(self):
         for t in tables:
-            self.execute('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)', 'alter_rename_partition_1_' + t, 'hive')
-            self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_rename_partiton_2_' + t, 'hive')
+            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)')
             self.execute('ALTER TABLE ' + t + '_part PARTITION (c=1) RENAME TO PARTITION (c=2)', 'alter_rename_partiton_3_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_rename_partiton_4_' + t, 'hive')
 
     def test_45_alter_drop_partition(self):
         for t in tables:
-            self.execute('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)', 'alter_drop_partition_1_' + t, 'hive')
-            self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_drop_partiton_2_' + t, 'hive')
+            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)')
             self.execute('ALTER TABLE ' + t + '_part DROP PARTITION (c=1)', 'alter_drop_partiton_3_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_drop_partiton_4_' + t, 'hive')
 
     def test_46_alter_partition_set(self):
         for t in tables:
-            self.execute('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)', 'alter_partition_set_1_' + t, 'hive')
+            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_partiton_set_2_' + t, 'hive')
             self.execute('ALTER TABLE ' + t + '_part PARTITION (c=1) SET LOCATION \'/tmp/x\'', 'alter_partition_set_3_' + t)
 
     def test_47_alter_recover(self):
         for t in tables:
-            self.execute('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)', 'alter_recover_1_' + t, 'hive')
+            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part RECOVER PARTITIONS', 'alter_recover_2_' + t)
 
     # Apache Spark 2.2.0-SNAPSHOT supports this.
