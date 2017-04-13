@@ -221,33 +221,33 @@ class TableTestSuite(SparkRangerTestSuite):
 
     def test_43_alter_add_partition(self):
         for t in tables:
-            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('CREATE TABLE ' + testdb + '.' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_add_partition_2_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_add_partition_3_' + t, 'hive')
 
     def test_44_alter_rename_partition(self):
         for t in tables:
-            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
-            self.executeHive('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)')
+            self.executeHive('CREATE TABLE ' + testdb + '.' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('ALTER TABLE ' + testdb + '.' + t + '_part ADD PARTITION (c=1)')
             self.execute('ALTER TABLE ' + t + '_part PARTITION (c=1) RENAME TO PARTITION (c=2)', 'alter_rename_partiton_3_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_rename_partiton_4_' + t, 'hive')
 
     def test_45_alter_drop_partition(self):
         for t in tables:
-            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
-            self.executeHive('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)')
+            self.executeHive('CREATE TABLE ' + testdb + '.' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('ALTER TABLE ' + testdb + '.' + t + '_part ADD PARTITION (c=1)')
             self.execute('ALTER TABLE ' + t + '_part DROP PARTITION (c=1)', 'alter_drop_partiton_3_' + t)
             self.execute('SHOW PARTITIONS ' + t + '_part', 'alter_drop_partiton_4_' + t, 'hive')
 
     def test_46_alter_partition_set(self):
         for t in tables:
-            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('CREATE TABLE ' + testdb + '.' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part ADD PARTITION (c=1)', 'alter_partiton_set_2_' + t, 'hive')
             self.execute('ALTER TABLE ' + t + '_part PARTITION (c=1) SET LOCATION \'/tmp/x\'', 'alter_partition_set_3_' + t)
 
     def test_47_alter_recover(self):
         for t in tables:
-            self.executeHive('CREATE TABLE ' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
+            self.executeHive('CREATE TABLE ' + testdb + '.' + t + '_part(a INT, b INT) PARTITIONED BY (c INT)')
             self.execute('ALTER TABLE ' + t + '_part RECOVER PARTITIONS', 'alter_recover_2_' + t)
 
     # Apache Spark 2.2.0-SNAPSHOT supports this.
