@@ -24,14 +24,16 @@ import java.util.UUID
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.hive.llap.{LlapInputSplit, LlapRowInputFormat, Schema}
 import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.mapred.{InputSplit, JobConf}
+import org.apache.hadoop.mapred.{InputFormat, InputSplit, JobConf}
 
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.HadoopRDD
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.sources.{BaseRelation, Filter, InsertableRelation, PrunedFilteredScan}
 import org.apache.spark.sql.types.StructType
 
+import org.slf4j.LoggerFactory
 
 case class LlapRelation(
     @transient sc: SQLContext,
@@ -39,6 +41,8 @@ case class LlapRelation(
   extends BaseRelation
   with InsertableRelation
   with PrunedFilteredScan {
+
+  private val log = LoggerFactory.getLogger(getClass)
 
   override def sqlContext(): SQLContext = {
     sc
@@ -104,9 +108,7 @@ case class LlapRelation(
 
       // This should be set to the number of executors
       val numPartitions = sc.sparkContext.defaultMinPartitions
-      val rdd = sc.sparkContext.hadoopRDD(jobConf, inputFormatClass,
-          classOf[NullWritable], classOf[org.apache.hadoop.hive.llap.Row], numPartitions)
-          .asInstanceOf[HadoopRDD[NullWritable, org.apache.hadoop.hive.llap.Row]]
+      val rdd = new LlapRDD(this, sc.sparkContext, jobConf, numPartitions)
 
       // Convert from RDD into Spark Rows
       rdd.mapPartitionsWithInputSplit(LlapRelation.llapRowRddToRows, preservesPartitioning = false)
@@ -186,6 +188,20 @@ case class LlapRelation(
       super.sizeInBytes
     }
   }
+
+  def close(): Unit = {
+    if (inputFormat != null) {
+      val err = new Exception("LlapRelation.close()");
+log.error("*** Closing LlapRelation", err)
+      inputFormat.close()
+    }
+  }
+
+  @transient private var inputFormat: LlapRowInputFormat = _
+
+  def setInputFormat(inputFormat: LlapRowInputFormat) = {
+    this.inputFormat = inputFormat
+  }
 }
 
 object LlapRelation {
@@ -197,6 +213,28 @@ object LlapRelation {
       val row = RowConverter.llapRowToSparkRow(tuple._2, schema)
       row
     })
+  }
+}
+
+class LlapRDD(
+    llapRelation: LlapRelation,
+    sc: SparkContext,
+    conf: JobConf,
+    minPartitions: Int)
+  extends HadoopRDD[NullWritable, org.apache.hadoop.hive.llap.Row](
+      sc,
+      conf,
+      classOf[LlapRowInputFormat],
+      classOf[NullWritable],
+      classOf[org.apache.hadoop.hive.llap.Row],
+      minPartitions) {
+
+  // Override getInputFormat so we can save the result back to the LlapRelation.
+  override protected def getInputFormat(conf: JobConf):
+    InputFormat[NullWritable, org.apache.hadoop.hive.llap.Row] = {
+    val inputFormat = super.getInputFormat(conf)
+    llapRelation.setInputFormat(inputFormat.asInstanceOf[LlapRowInputFormat])
+    inputFormat
   }
 }
 
