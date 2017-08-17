@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.hive.llap
 
+import java.util.UUID
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -47,12 +49,15 @@ class LlapMetastoreCatalog(sparkSession: SparkSession)
 
     // Now convert to LlapRelation
     val sessionState = sparkSession.sessionState.asInstanceOf[LlapSessionState]
+    // Add a handleID which can be used to close resources via LlapBaseInputFormat.close()
+    val handleId = UUID.randomUUID().toString()
     val logicalRelation = LogicalRelation(
       DataSource(
         sparkSession = sparkSession,
         className = "org.apache.spark.sql.hive.llap",
         options = Map(
           "table" -> (qualifiedTableName.database + "." + qualifiedTableName.name),
+          "handleid" -> handleId,
           "sizeinbytes" -> size.toString(),
           "url" -> sessionState.getConnectionUrl())
       ).resolveRelation())
