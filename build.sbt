@@ -128,6 +128,7 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.rename("org.apache.hadoop.hive.common.**" -> "shadehive.@0").inAll,
   ShadeRule.rename("org.apache.hadoop.hive.conf.**" -> "shadehive.@0").inAll,
   ShadeRule.rename("org.apache.hadoop.hive.io.**" -> "shadehive.@0").inAll,
+  ShadeRule.rename("org.apache.hive.common.**" -> "shadehive.@0").inAll,
   ShadeRule.rename("org.apache.hive.jdbc.**" -> "shadehive.@0").inAll,
   ShadeRule.rename("org.apache.hive.service.**" -> "shadehive.@0").inAll,
   ShadeRule.rename("org.apache.hadoop.hive.metastore.**" -> "shadehive.@0").inAll,

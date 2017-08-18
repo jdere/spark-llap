@@ -27,11 +27,14 @@ class DefaultSource extends RelationProvider {
 
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String])
       : BaseRelation = {
-    val sessionState = sqlContext.sparkSession.sessionState.asInstanceOf[LlapSessionState]
+    val sessionState: LlapSessionState = sqlContext.sparkSession.sessionState match {
+        case lss: LlapSessionState => lss
+        case _ => new LlapSessionState(sqlContext.sparkSession)
+    }
     val params = parameters +
       ("user.name" -> sessionState.getUserString()) +
       ("user.password" -> "password") +
-      ("connectionUrl" -> sessionState.getConnectionUrl())
+      ("url" -> sessionState.getConnectionUrl())
     LlapRelation(
       sqlContext,
       params)
